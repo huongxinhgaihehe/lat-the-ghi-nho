@@ -62,7 +62,7 @@
       width: 100%;
       height: 100%;
       pointer-events: none;
-      z-index: 100;
+      z-index: 9999;
       display: none;
     }
 
@@ -80,7 +80,9 @@
       flex-direction: column;
       text-align: center;
       color: white;
-      background: transparent !important;
+      background: rgba(0, 0, 0, 0.9) !important;
+      overflow-y: auto;
+      padding: 2rem;
     }
     #final-display img {
       max-width: 400px;
@@ -88,6 +90,23 @@
       margin-bottom: 20px;
       box-shadow: 0 0 40px rgba(255,255,255,0.8);
       transform: scale(1.05);
+    }
+    #all-images-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 2rem;
+      max-width: 1400px;
+      margin: 2rem auto;
+    }
+    #all-images-grid .image-item {
+      text-align: center;
+    }
+    #all-images-grid img {
+      width: 100%;
+      height: 250px;
+      object-fit: cover;
+      border-radius: 0.5rem;
+      box-shadow: 0 0 20px rgba(255,255,255,0.5);
     }
     #final-display p {
       font-size: 1.3rem;
@@ -131,6 +150,17 @@
     @keyframes popupIn {
       from { transform: scale(0.7); opacity: 0; }
       to { transform: scale(1); opacity: 1; }
+    }
+
+    /* Speaker icon */
+    #speaker-icon {
+      cursor: pointer;
+      font-size: 1.5rem;
+      margin-left: 0.5rem;
+      transition: transform 0.2s;
+    }
+    #speaker-icon:hover {
+      transform: scale(1.2);
     }
 
     /* Responsive */
@@ -186,7 +216,12 @@
 <body class="bg-gray-900 bg-opacity-70 text-white min-h-screen flex flex-col items-center justify-center p-6">
   <canvas id="fireworks"></canvas>
 
-  <div id="main-content" class="flex flex-col items-center">
+  <button id="start-button"
+    class="mb-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition transform hover:scale-105">
+    ▶️ Bắt đầu chơi
+  </button>
+
+  <div id="main-content" class="flex flex-col items-center" style="display: none;">
     <h1 class="text-5xl font-bold mb-3 text-yellow-300 drop-shadow-lg text-center">🧠 Trò chơi Lật Thẻ Ghi Nhớ</h1>
     <p class="text-lg text-gray-200 mb-6 text-center">Lật 2 thẻ giống nhau để xem mô tả ảnh!</p>
 
@@ -200,7 +235,10 @@
           <p id="description" class="text-gray-300">Chưa có gì để hiển thị.</p>
         </div>
         <div class="mt-6 bg-gray-800 bg-opacity-80 p-4 rounded-lg shadow-lg text-lg">
-          <div>⏱️ Thời gian còn lại: <span id="time" class="text-blue-400 font-bold">02:00</span></div>
+          <div class="flex items-center justify-center">
+            ⏱️ Thời gian còn lại: <span id="time" class="text-blue-400 font-bold ml-2">02:00</span>
+            <span id="speaker-icon" title="Bật/Tắt nhạc">🔊</span>
+          </div>
           <div>✅ Cặp đúng: <span id="score" class="text-green-400 font-bold">0</span>/10</div>
         </div>
         <button id="restart" class="mt-6 bg-blue-600 hover:bg-blue-700 py-2 px-6 rounded-lg font-bold text-white shadow-md">Chơi lại</button>
@@ -208,10 +246,12 @@
     </div>
   </div>
 
+  <audio id="bg-music" src="vtcchb.mp3" preload="auto"></audio>
+
   <div id="final-display" class="flex">
     <div id="win-text">🎉 CHIẾN THẮNG 🎉</div>
-    <img id="final-img" src="" alt="">
-    <p id="final-desc"></p>
+    <h2 class="text-3xl font-bold mb-4 text-yellow-300">Tất cả các hình ảnh lịch sử</h2>
+    <div id="all-images-grid"></div>
     <button id="play-again" class="mt-8 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg text-xl">Chơi lại</button>
   </div>
 
@@ -248,17 +288,40 @@
     const fireworks = document.getElementById("fireworks");
     const finalDisplay = document.getElementById("final-display");
     const losePopup = document.getElementById("lose-popup");
-    const finalImg = document.getElementById("final-img");
-    const finalDesc = document.getElementById("final-desc");
+    const allImagesGrid = document.getElementById("all-images-grid");
     const mainContent = document.getElementById("main-content");
+    const startButton = document.getElementById("start-button");
+    const bgMusic = document.getElementById("bg-music");
+    const speakerIcon = document.getElementById("speaker-icon");
 
     let firstCard = null, secondCard = null;
     let score = 0;
     let timeLeft = 120;
     let timer, fireworkTimer;
     let lastDesc = "", lastImg = "";
+    let gameStarted = false;
+    let isMuted = false;
+
+    startButton.addEventListener("click", () => {
+      startButton.style.display = "none";
+      mainContent.style.display = "flex";
+      bgMusic.play();
+      startGame();
+    });
+
+    speakerIcon.addEventListener("click", () => {
+      isMuted = !isMuted;
+      if (isMuted) {
+        bgMusic.pause();
+        speakerIcon.textContent = "🔇";
+      } else {
+        bgMusic.play();
+        speakerIcon.textContent = "🔊";
+      }
+    });
 
     function startGame() {
+      gameStarted = true;
       board.innerHTML = "";
       desc.textContent = "Chưa có gì để hiển thị.";
       previewImg.src = "";
@@ -352,14 +415,26 @@
     function showVictory() {
       mainContent.style.display = "none";
       finalDisplay.style.display = "flex";
-      finalImg.src = lastImg;
-      finalDesc.textContent = lastDesc;
+      
+      // Hiển thị tất cả các ảnh (chỉ ảnh, không có mô tả)
+      allImagesGrid.innerHTML = "";
+      cardsData.forEach(card => {
+        const item = document.createElement("div");
+        item.className = "image-item";
+        item.innerHTML = `
+          <img src="${card.img}" alt="Hình ảnh lịch sử">
+        `;
+        allImagesGrid.appendChild(item);
+      });
+      
+      // Không dừng nhạc khi chiến thắng
       startFireworks();
     }
 
     function showLosePopup() {
       mainContent.style.display = "none";
       losePopup.style.display = "flex";
+      bgMusic.pause();
     }
 
     function startFireworks() {
@@ -406,13 +481,27 @@
       fireworks.style.display = "none";
     }
 
-    restartBtn.onclick = startGame;
-    playAgainBtn.onclick = startGame;
-    retryBtn.onclick = startGame;
-
-    startGame();
+    restartBtn.onclick = () => {
+      if (!isMuted) {
+        bgMusic.currentTime = 0;
+        bgMusic.play();
+      }
+      startGame();
+    };
+    playAgainBtn.onclick = () => {
+      if (!isMuted) {
+        bgMusic.currentTime = 0;
+        bgMusic.play();
+      }
+      startGame();
+    };
+    retryBtn.onclick = () => {
+      if (!isMuted) {
+        bgMusic.currentTime = 0;
+        bgMusic.play();
+      }
+      startGame();
+    };
   </script>
 </body>
 </html>
-
-
