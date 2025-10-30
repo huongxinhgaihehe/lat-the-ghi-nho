@@ -12,6 +12,7 @@
       overflow-x: hidden;
     }
 
+    /* CARD */
     .card {
       width: 150px;
       height: 150px;
@@ -53,7 +54,7 @@
       visibility: hidden;
     }
 
-    /* Canvas pháo hoa */
+    /* Fireworks */
     #fireworks {
       position: fixed;
       top: 0;
@@ -65,7 +66,7 @@
       display: none;
     }
 
-    /* Màn hình chiến thắng */
+    /* Victory screen */
     #final-display {
       position: fixed;
       top: 0;
@@ -79,10 +80,8 @@
       flex-direction: column;
       text-align: center;
       color: white;
-      transition: all 0.5s ease-in-out;
       background: transparent !important;
     }
-
     #final-display img {
       max-width: 400px;
       border-radius: 1rem;
@@ -90,14 +89,12 @@
       box-shadow: 0 0 40px rgba(255,255,255,0.8);
       transform: scale(1.05);
     }
-
     #final-display p {
       font-size: 1.3rem;
       max-width: 600px;
       line-height: 1.6;
       color: #e0e0e0;
     }
-
     #win-text {
       font-size: 5rem;
       font-weight: bold;
@@ -106,13 +103,12 @@
       text-shadow: 0 0 30px #00ffff, 0 0 60px #ff00ff;
       animation: pulse 1.5s infinite alternate;
     }
-
     @keyframes pulse {
       from { transform: scale(1); opacity: 1; }
       to { transform: scale(1.1); opacity: 0.8; }
     }
 
-    /* Popup thua */
+    /* Lose popup */
     #lose-popup {
       position: fixed;
       top: 0; left: 0;
@@ -136,22 +132,71 @@
       from { transform: scale(0.7); opacity: 0; }
       to { transform: scale(1); opacity: 1; }
     }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      #game-board {
+        grid-template-columns: repeat(4, 1fr) !important;
+      }
+      .card {
+        width: 120px;
+        height: 120px;
+      }
+      #final-display img {
+        max-width: 300px;
+      }
+    }
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+      #main-content {
+        flex-direction: column;
+        align-items: center;
+      }
+      #game-board {
+        grid-template-columns: repeat(3, 1fr) !important;
+      }
+      .card {
+        width: 100px;
+        height: 100px;
+      }
+      #final-display img {
+        max-width: 250px;
+      }
+      #win-text {
+        font-size: 3rem;
+      }
+    }
+    @media (max-width: 480px) {
+      .card {
+        width: 80px;
+        height: 80px;
+      }
+      #game-board {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 0.5rem;
+      }
+      #win-text {
+        font-size: 2.5rem;
+      }
+    }
   </style>
 </head>
 <body class="bg-gray-900 bg-opacity-70 text-white min-h-screen flex flex-col items-center justify-center p-6">
   <canvas id="fireworks"></canvas>
 
   <div id="main-content" class="flex flex-col items-center">
-    <h1 class="text-5xl font-bold mb-3 text-yellow-300 drop-shadow-lg">🧠 Trò chơi Lật Thẻ Ghi Nhớ</h1>
+    <h1 class="text-5xl font-bold mb-3 text-yellow-300 drop-shadow-lg text-center">🧠 Trò chơi Lật Thẻ Ghi Nhớ</h1>
     <p class="text-lg text-gray-200 mb-6 text-center">Lật 2 thẻ giống nhau để xem mô tả ảnh!</p>
 
     <div class="flex flex-col md:flex-row gap-6 justify-center items-start w-full max-w-6xl">
-      <div id="game-board" class="grid grid-cols-5 gap-5 bg-gray-800 bg-opacity-80 p-6 rounded-lg shadow-lg"></div>
+      <div id="game-board" class="grid grid-cols-5 gap-5 bg-gray-800 bg-opacity-80 p-6 rounded-lg shadow-lg mx-auto"></div>
 
       <div class="md:w-1/3 w-full text-center">
         <div class="bg-gray-800 bg-opacity-80 rounded-lg p-4 shadow-lg">
           <h2 class="text-xl font-semibold mb-3 text-blue-300">Mô tả ảnh</h2>
-          <img id="preview-img" src="" alt="" class="hidden rounded-lg mb-3">
+          <img id="preview-img" src="" alt="" class="hidden rounded-lg mb-3 mx-auto">
           <p id="description" class="text-gray-300">Chưa có gì để hiển thị.</p>
         </div>
         <div class="mt-6 bg-gray-800 bg-opacity-80 p-4 rounded-lg shadow-lg text-lg">
@@ -163,7 +208,6 @@
     </div>
   </div>
 
-  <!-- Màn hình chiến thắng -->
   <div id="final-display" class="flex">
     <div id="win-text">🎉 CHIẾN THẮNG 🎉</div>
     <img id="final-img" src="" alt="">
@@ -171,7 +215,6 @@
     <button id="play-again" class="mt-8 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg text-xl">Chơi lại</button>
   </div>
 
-  <!-- Popup thua -->
   <div id="lose-popup" class="flex">
     <div class="content">
       <h2 class="text-4xl font-bold text-red-400 mb-4">HẾT GIỜ!</h2>
@@ -242,8 +285,7 @@
           <div class="card-inner">
             <div class="card-front">?</div>
             <div class="card-back" style="background-image:url(${c.img})"></div>
-          </div>
-        `;
+          </div>`;
         card.addEventListener("click", () => flipCard(card));
         board.appendChild(card);
       });
@@ -313,11 +355,6 @@
       finalImg.src = lastImg;
       finalDesc.textContent = lastDesc;
       startFireworks();
-
-      setTimeout(() => {
-        finalImg.style.display = "none";
-        finalDesc.style.display = "none";
-      }, 4000);
     }
 
     function showLosePopup() {
@@ -325,14 +362,12 @@
       losePopup.style.display = "flex";
     }
 
-    // --- PHÁO HOA ---
     function startFireworks() {
       fireworks.style.display = "block";
       const ctx = fireworks.getContext("2d");
       fireworks.width = window.innerWidth;
       fireworks.height = window.innerHeight;
       const particles = [];
-
       function createFirework(x, y) {
         for (let i = 0; i < 60; i++) {
           particles.push({
@@ -344,7 +379,6 @@
           });
         }
       }
-
       function animate() {
         ctx.clearRect(0, 0, fireworks.width, fireworks.height);
         particles.forEach((p, i) => {
@@ -359,7 +393,6 @@
         });
         requestAnimationFrame(animate);
       }
-
       fireworkTimer = setInterval(() => {
         createFirework(Math.random() * fireworks.width, Math.random() * fireworks.height * 0.5);
       }, 300);
@@ -373,10 +406,11 @@
       fireworks.style.display = "none";
     }
 
-    restartBtn.addEventListener("click", startGame);
-    playAgainBtn.addEventListener("click", startGame);
-    retryBtn.addEventListener("click", startGame);
-    document.addEventListener("DOMContentLoaded", startGame);
+    restartBtn.onclick = startGame;
+    playAgainBtn.onclick = startGame;
+    retryBtn.onclick = startGame;
+
+    startGame();
   </script>
 </body>
 </html>
