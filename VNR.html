@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🧠 Trò chơi Lật Thẻ Ghi Nhớ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background: url("https://imgnvsk.vnanet.vn/MediaUpload/Content/2024/01/19/z5085604077580-b9b36aa6411149611722cc8dafa7db7319-10-26-58.jpg") no-repeat center center fixed;
+      background-size: cover;
+      overflow-x: hidden;
+    }
+
+    .card {
+      width: 150px;
+      height: 150px;
+      perspective: 800px;
+    }
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 0.4s;
+    }
+    .flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+    .card-front,
+    .card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 0.5rem;
+      backface-visibility: hidden;
+    }
+    .card-front {
+      background-color: #1f2937;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      color: #fff;
+    }
+    .card-back {
+      transform: rotateY(180deg);
+      background-size: cover;
+      background-position: center;
+      border: 3px solid #3b82f6;
+    }
+    .matched {
+      visibility: hidden;
+    }
+
+    /* Canvas pháo hoa */
+    #fireworks {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 100;
+      display: none;
+    }
+
+    /* Màn hình chiến thắng */
+    #final-display {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 200;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      text-align: center;
+      color: white;
+      transition: all 0.5s ease-in-out;
+      background: transparent !important;
+    }
+
+    #final-display img {
+      max-width: 400px;
+      border-radius: 1rem;
+      margin-bottom: 20px;
+      box-shadow: 0 0 40px rgba(255,255,255,0.8);
+      transform: scale(1.05);
+    }
+
+    #final-display p {
+      font-size: 1.3rem;
+      max-width: 600px;
+      line-height: 1.6;
+      color: #e0e0e0;
+    }
+
+    #win-text {
+      font-size: 5rem;
+      font-weight: bold;
+      margin-bottom: 30px;
+      color: #00ffff;
+      text-shadow: 0 0 30px #00ffff, 0 0 60px #ff00ff;
+      animation: pulse 1.5s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); opacity: 1; }
+      to { transform: scale(1.1); opacity: 0.8; }
+    }
+
+    /* Popup thua */
+    #lose-popup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 300;
+    }
+    #lose-popup .content {
+      background: #1f2937;
+      padding: 40px;
+      border-radius: 20px;
+      text-align: center;
+      color: white;
+      box-shadow: 0 0 20px rgba(255,255,255,0.5);
+      animation: popupIn 0.5s ease;
+    }
+    @keyframes popupIn {
+      from { transform: scale(0.7); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body class="bg-gray-900 bg-opacity-70 text-white min-h-screen flex flex-col items-center justify-center p-6">
+  <canvas id="fireworks"></canvas>
+
+  <div id="main-content" class="flex flex-col items-center">
+    <h1 class="text-5xl font-bold mb-3 text-yellow-300 drop-shadow-lg">🧠 Trò chơi Lật Thẻ Ghi Nhớ</h1>
+    <p class="text-lg text-gray-200 mb-6 text-center">Lật 2 thẻ giống nhau để xem mô tả ảnh!</p>
+
+    <div class="flex flex-col md:flex-row gap-6 justify-center items-start w-full max-w-6xl">
+      <div id="game-board" class="grid grid-cols-5 gap-5 bg-gray-800 bg-opacity-80 p-6 rounded-lg shadow-lg"></div>
+
+      <div class="md:w-1/3 w-full text-center">
+        <div class="bg-gray-800 bg-opacity-80 rounded-lg p-4 shadow-lg">
+          <h2 class="text-xl font-semibold mb-3 text-blue-300">Mô tả ảnh</h2>
+          <img id="preview-img" src="" alt="" class="hidden rounded-lg mb-3">
+          <p id="description" class="text-gray-300">Chưa có gì để hiển thị.</p>
+        </div>
+        <div class="mt-6 bg-gray-800 bg-opacity-80 p-4 rounded-lg shadow-lg text-lg">
+          <div>⏱️ Thời gian còn lại: <span id="time" class="text-blue-400 font-bold">02:00</span></div>
+          <div>✅ Cặp đúng: <span id="score" class="text-green-400 font-bold">0</span>/10</div>
+        </div>
+        <button id="restart" class="mt-6 bg-blue-600 hover:bg-blue-700 py-2 px-6 rounded-lg font-bold text-white shadow-md">Chơi lại</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Màn hình chiến thắng -->
+  <div id="final-display" class="flex">
+    <div id="win-text">🎉 CHIẾN THẮNG 🎉</div>
+    <img id="final-img" src="" alt="">
+    <p id="final-desc"></p>
+    <button id="play-again" class="mt-8 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg text-xl">Chơi lại</button>
+  </div>
+
+  <!-- Popup thua -->
+  <div id="lose-popup" class="flex">
+    <div class="content">
+      <h2 class="text-4xl font-bold text-red-400 mb-4">HẾT GIỜ!</h2>
+      <p class="text-lg mb-6">Rất tiếc, bạn chưa hoàn thành trò chơi.</p>
+      <button id="retry" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg text-xl">Chơi lại</button>
+    </div>
+  </div>
+
+  <script>
+    const cardsData = [
+      { img: "https://bcp.cdnchinhphu.vn/thumb_w/777/Uploaded/buithuhuong/2020_01_20/thanh%20lap%20dang.jpg", desc: "Lãnh tụ Nguyễn Ái Quốc triệu tập hội nghị thành lập Đảng Cộng sản Việt Nam ngày 3/2/1930." },
+      { img: "https://bcp.cdnchinhphu.vn/thumb_w/777/Uploaded/buithuhuong/2020_01_20/tuyen%20ngon%20doc%20lap.jpg", desc: "Ngày 2/9/1945, Hồ Chủ tịch đọc Tuyên ngôn độc lập, khai sinh nước Việt Nam Dân chủ Cộng hòa." },
+      { img: "https://bcp.cdnchinhphu.vn/thumb_w/777/Uploaded/buithuhuong/2020_01_20/dai%20hoi%20VI.jpg", desc: "Đại hội VI của Đảng (năm 1986) – Đại hội của công cuộc Đổi mới." },
+      { img: "https://hnm.1cdn.vn/2025/01/29/dien-bien-phu.jpg", desc: "Chiến thắng Điện Biên Phủ là minh chứng hùng hồn cho sự lãnh đạo tài tình của Đảng." },
+      { img: "https://hnm.1cdn.vn/2025/01/29/8-1-.jpg", desc: "Trưa 30/4/1975, xe tăng của Quân Giải phóng tiến vào Dinh Độc Lập, thống nhất đất nước." },
+      { img: "https://resource.kinhtedothi.vn/2021/12/25/s10.jpg", desc: "Cuốn 'Đường Kách mệnh' của Nguyễn Ái Quốc, tài liệu huấn luyện chính trị cho thanh niên Việt Nam." },
+      { img: "https://resource.kinhtedothi.vn/2021/12/25/cc6745ee-c491-49a0-9ccf-75a57b2795e6.jpg", desc: "Nguyễn Ái Quốc tham dự Đại hội Tours năm 1920 – nơi Người tìm thấy con đường cứu nước." },
+      { img: "https://file.qdnd.vn/data/images/0/2020/01/11/tuanson/1%208.jpg?dpi=150&quality=100&w=575", desc: "Thông điệp mạnh mẽ về đoàn kết toàn dân quanh Đảng và Bác Hồ." },
+      { img: "https://hnm.1cdn.vn/2025/01/29/9-1-.jpg", desc: "Nhân dân Sài Gòn đón chào quân giải phóng trưa 30-4-1975." },
+      { img: "https://file3.qdnd.vn/data/images/0/2025/01/16/upload_2049/trien-lam1.jpg?dpi=150&quality=100&w=870", desc: "Nguyễn Ái Quốc giảng dạy tại lớp huấn luyện chính trị ở Quảng Châu (Trung Quốc)." }
+    ];
+
+    const board = document.getElementById("game-board");
+    const desc = document.getElementById("description");
+    const previewImg = document.getElementById("preview-img");
+    const timeDisplay = document.getElementById("time");
+    const scoreDisplay = document.getElementById("score");
+    const restartBtn = document.getElementById("restart");
+    const playAgainBtn = document.getElementById("play-again");
+    const retryBtn = document.getElementById("retry");
+    const fireworks = document.getElementById("fireworks");
+    const finalDisplay = document.getElementById("final-display");
+    const losePopup = document.getElementById("lose-popup");
+    const finalImg = document.getElementById("final-img");
+    const finalDesc = document.getElementById("final-desc");
+    const mainContent = document.getElementById("main-content");
+
+    let firstCard = null, secondCard = null;
+    let score = 0;
+    let timeLeft = 120;
+    let timer, fireworkTimer;
+    let lastDesc = "", lastImg = "";
+
+    function startGame() {
+      board.innerHTML = "";
+      desc.textContent = "Chưa có gì để hiển thị.";
+      previewImg.src = "";
+      previewImg.classList.add("hidden");
+      score = 0;
+      scoreDisplay.textContent = score;
+      stopFireworks();
+      finalDisplay.style.display = "none";
+      losePopup.style.display = "none";
+      mainContent.style.display = "flex";
+      timeLeft = 120;
+      updateTime();
+
+      const allCards = [...cardsData, ...cardsData]
+        .map((c, i) => ({ ...c, id: i }))
+        .sort(() => Math.random() - 0.5);
+
+      allCards.forEach((c) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.dataset.img = c.img;
+        card.dataset.desc = c.desc;
+        card.innerHTML = `
+          <div class="card-inner">
+            <div class="card-front">?</div>
+            <div class="card-back" style="background-image:url(${c.img})"></div>
+          </div>
+        `;
+        card.addEventListener("click", () => flipCard(card));
+        board.appendChild(card);
+      });
+
+      clearInterval(timer);
+      timer = setInterval(() => {
+        timeLeft--;
+        updateTime();
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          showLosePopup();
+        }
+      }, 1000);
+    }
+
+    function updateTime() {
+      const m = String(Math.floor(timeLeft / 60)).padStart(2, "0");
+      const s = String(timeLeft % 60).padStart(2, "0");
+      timeDisplay.textContent = `${m}:${s}`;
+    }
+
+    function flipCard(card) {
+      if (card.classList.contains("flipped") || card.classList.contains("matched") || !timeLeft) return;
+      if (!firstCard) {
+        firstCard = card;
+        card.classList.add("flipped");
+      } else if (!secondCard && card !== firstCard) {
+        secondCard = card;
+        card.classList.add("flipped");
+        checkMatch();
+      }
+    }
+
+    function checkMatch() {
+      if (firstCard.dataset.img === secondCard.dataset.img) {
+        desc.textContent = firstCard.dataset.desc;
+        previewImg.src = firstCard.dataset.img;
+        previewImg.classList.remove("hidden");
+        lastImg = firstCard.dataset.img;
+        lastDesc = firstCard.dataset.desc;
+
+        setTimeout(() => {
+          firstCard.classList.add("matched");
+          secondCard.classList.add("matched");
+          score++;
+          scoreDisplay.textContent = score;
+          if (score === cardsData.length) {
+            clearInterval(timer);
+            showVictory();
+          }
+          firstCard = null;
+          secondCard = null;
+        }, 300);
+      } else {
+        setTimeout(() => {
+          firstCard.classList.remove("flipped");
+          secondCard.classList.remove("flipped");
+          firstCard = null;
+          secondCard = null;
+        }, 800);
+      }
+    }
+
+    function showVictory() {
+      mainContent.style.display = "none";
+      finalDisplay.style.display = "flex";
+      finalImg.src = lastImg;
+      finalDesc.textContent = lastDesc;
+      startFireworks();
+
+      setTimeout(() => {
+        finalImg.style.display = "none";
+        finalDesc.style.display = "none";
+      }, 4000);
+    }
+
+    function showLosePopup() {
+      mainContent.style.display = "none";
+      losePopup.style.display = "flex";
+    }
+
+    // --- PHÁO HOA ---
+    function startFireworks() {
+      fireworks.style.display = "block";
+      const ctx = fireworks.getContext("2d");
+      fireworks.width = window.innerWidth;
+      fireworks.height = window.innerHeight;
+      const particles = [];
+
+      function createFirework(x, y) {
+        for (let i = 0; i < 60; i++) {
+          particles.push({
+            x, y,
+            angle: Math.random() * Math.PI * 2,
+            speed: Math.random() * 6 + 2,
+            alpha: 1,
+            radius: Math.random() * 3 + 2
+          });
+        }
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, fireworks.width, fireworks.height);
+        particles.forEach((p, i) => {
+          p.x += Math.cos(p.angle) * p.speed;
+          p.y += Math.sin(p.angle) * p.speed + 1;
+          p.alpha -= 0.01;
+          ctx.fillStyle = `rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},${p.alpha})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fill();
+          if (p.alpha <= 0) particles.splice(i, 1);
+        });
+        requestAnimationFrame(animate);
+      }
+
+      fireworkTimer = setInterval(() => {
+        createFirework(Math.random() * fireworks.width, Math.random() * fireworks.height * 0.5);
+      }, 300);
+      animate();
+    }
+
+    function stopFireworks() {
+      clearInterval(fireworkTimer);
+      const ctx = fireworks.getContext("2d");
+      ctx.clearRect(0, 0, fireworks.width, fireworks.height);
+      fireworks.style.display = "none";
+    }
+
+    restartBtn.addEventListener("click", startGame);
+    playAgainBtn.addEventListener("click", startGame);
+    retryBtn.addEventListener("click", startGame);
+    document.addEventListener("DOMContentLoaded", startGame);
+  </script>
+</body>
+</html>
